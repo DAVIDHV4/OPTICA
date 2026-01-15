@@ -1,0 +1,96 @@
+.gp-title {
+  color: #f1f5f9; 
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.gp-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: 16px;
+  padding: 24px;
+  color: #1e293b;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.gp-input .MuiInputLabel-root {
+  color: #475569 !important;
+  font-weight: 500;
+}
+
+.gp-input .MuiOutlinedInput-root {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 8px;
+}
+
+.gp-input .MuiOutlinedInput-root fieldset {
+  border-color: #cbd5e1 !important;
+}
+
+.gp-input .MuiOutlinedInput-root:hover fieldset {
+  border-color: #94a3b8 !important;
+}
+
+.gp-input .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #0ea5e9 !important;
+  border-width: 2px !important;
+}
+
+.gp-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.gp-table-head {
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.gp-table-header-cell {
+  color: #334155 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.75rem !important;
+  white-space: nowrap;
+}
+
+.gp-table-row:hover {
+  background-color: #f8fafc !important;
+}
+
+.gp-table-cell {
+  color: #334155 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  font-size: 0.9rem !important;
+}
+
+.MuiDialog-root .MuiBackdrop-root {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.gp-modal-paper {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px);
+  border: 2px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25) !important;
+  border-radius: 20px !important;
+  color: #0f172a !important;
+}
+
+.gp-modal-title {
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.gp-modal-paper button {
+    font-weight: bold;
+}

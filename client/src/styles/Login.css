@@ -1,0 +1,124 @@
+.login-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px; 
+  box-sizing: border-box;
+  background-image: url('../assets/fondo-login.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.login-card {
+  max-width: 450px;
+  width: 100%;
+  padding: 40px;
+  border-radius: 20px !important;
+  background-color: rgba(255, 255, 255, 0.25) !important; 
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #0d47a1;
+}
+
+.login-title {
+  font-weight: 800 !important;
+  letter-spacing: -0.5px !important;
+}
+
+.login-subtitle {
+  color: #1565c0;
+  font-weight: 600 !important;
+  opacity: 0.9;
+}
+
+.login-input {
+  margin-bottom: 20px !important;
+}
+
+.login-input .MuiFilledInput-root {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  border-radius: 12px !important;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.login-input .MuiFilledInput-root:hover {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.login-input .MuiFilledInput-root.Mui-focused {
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 2px #0d47a1;
+}
+
+.login-button {
+  margin-top: 20px !important;
+  padding: 12px 0 !important;
+  font-weight: bold !important;
+  border-radius: 12px !important;
+  font-size: 1.1rem !important;
+  box-shadow: 0 4px 14px 0 rgba(13, 71, 161, 0.39) !important;
+  color: white !important;
+  background-color: rgba(13, 71, 161, 0.55) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.login-button:hover {
+  background-color: rgba(13, 71, 161, 0.75) !important;
+  transform: translateY(-2px);
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+.login-alert {
+  margin-bottom: 25px !important;
+  margin-top: 10px !important;
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+  background-color: rgba(253, 237, 237, 0.95) !important;
+  color: #5f2120 !important;
+  border: 1px solid rgba(245, 198, 203, 0.8) !important;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    padding: 24px 20px !important; 
+    border-radius: 16px !important; 
+  }
+
+  .login-header {
+    margin-bottom: 20px;
+  }
+
+  .login-title {
+    font-size: 1.75rem !important; 
+  }
+
+  .login-input {
+    margin-bottom: 15px !important;
+  }
+  
+  .login-button {
+    margin-top: 15px !important;
+    font-size: 1rem !important;
+  }
+}

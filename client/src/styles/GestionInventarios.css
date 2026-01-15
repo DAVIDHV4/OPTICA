@@ -1,0 +1,94 @@
+.gi-title {
+  color: #f1f5f9; 
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.gi-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  padding: 24px;
+  color: #1e293b;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+}
+
+.gi-input .MuiInputLabel-root {
+  color: #475569 !important;
+  font-weight: 500;
+}
+
+.gi-input .MuiOutlinedInput-root {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 8px;
+}
+
+.gi-input .MuiOutlinedInput-root fieldset {
+  border-color: #cbd5e1 !important;
+}
+
+.gi-input .MuiOutlinedInput-root:hover fieldset {
+  border-color: #94a3b8 !important;
+}
+
+.gi-input .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #0ea5e9 !important;
+  border-width: 2px !important;
+}
+
+.gi-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.gi-table-head {
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.gi-table-header-cell {
+  color: #334155 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.75rem !important;
+  white-space: nowrap;
+}
+
+.gi-table-row:hover {
+  background-color: #f8fafc !important;
+}
+
+.gi-table-cell {
+  color: #334155 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  font-size: 0.9rem !important;
+}
+
+.stock-badge-low {
+  background-color: #fee2e2;
+  color: #dc2626;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.stock-badge-ok {
+  background-color: #dcfce7;
+  color: #16a34a;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.stock-badge-zero {
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 6px;
+}

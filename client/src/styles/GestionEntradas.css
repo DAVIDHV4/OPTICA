@@ -1,0 +1,135 @@
+/* =========================================
+   ESTILOS GENERALES
+   ========================================= */
+.ge-container {
+  width: 100%;
+  padding-bottom: 40px;
+}
+
+.ge-title {
+  color: #f1f5f9; 
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+/* TARJETA DE FILTROS */
+.ge-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.95) !important;
+  padding: 24px;
+  color: #1e293b;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* INPUTS GENERALES */
+.ge-input-glass .MuiInputLabel-root {
+  color: #475569 !important;
+  font-weight: 500;
+}
+
+.ge-input-glass .MuiOutlinedInput-root {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 8px;
+}
+
+.ge-input-glass .MuiOutlinedInput-root fieldset { border-color: #cbd5e1 !important; }
+.ge-input-glass .MuiOutlinedInput-root:hover fieldset { border-color: #94a3b8 !important; }
+.ge-input-glass .MuiOutlinedInput-root.Mui-focused fieldset { border-color: #0ea5e9 !important; border-width: 2px !important; }
+
+/* TABLA PRINCIPAL (AQUI ESTA EL BORDE QUE QUERIAS CAMBIAR) */
+.ge-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 4px; /* <--- CAMBIADO A 8px (Menos redondeado) */
+  
+  /* OCULTAR BARRAS DE SCROLL */
+  -ms-overflow-style: none;  /* IE y Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.ge-table-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari y Opera */
+}
+
+.ge-table-head { background-color: #f1f5f9 !important; border-bottom: 2px solid #e2e8f0 !important; }
+.ge-table-header-cell { color: #334155 !important; font-weight: 700 !important; text-transform: uppercase; font-size: 0.75rem !important; white-space: nowrap; }
+.ge-table-row:hover { background-color: #f8fafc !important; }
+.ge-table-cell { color: #334155 !important; border-bottom: 1px solid #e2e8f0 !important; font-size: 0.9rem !important; }
+
+/* =========================================
+   MODAL EFECTO VIDRIO
+   ========================================= */
+
+.MuiDialog-root .MuiBackdrop-root {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(8px) !important;
+}
+
+.ge-modal-paper {
+  background: rgba(255, 255, 255, 0.15) !important; /* EFECTO VIDRIO */
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px);
+  border: 2px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25) !important;
+  border-radius: 20px !important;
+  color: #0f172a !important;
+}
+
+.ge-modal-title {
+    color: #ffffff !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* OCULTAR SCROLL EN EL CONTENIDO DEL MODAL */
+.ge-modal-paper .MuiDialogContent-root {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    padding: 24px !important;
+}
+.ge-modal-paper .MuiDialogContent-root::-webkit-scrollbar {
+    display: none;
+}
+
+/* INPUTS DENTRO DEL MODAL */
+.ge-modal-input .MuiInputLabel-root { color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.3); font-weight: 600; }
+.ge-modal-input .MuiInputLabel-root.Mui-focused { color: #0ea5e9 !important; }
+.ge-modal-input .MuiOutlinedInput-root { background-color: #ffffff !important; border-radius: 8px; color: #0f172a !important; }
+.ge-modal-input .MuiOutlinedInput-root fieldset { border-color: rgba(0, 0, 0, 0.1) !important; }
+.ge-modal-input .MuiOutlinedInput-root:hover fieldset { border-color: #94a3b8 !important; }
+.ge-modal-input .MuiOutlinedInput-root.Mui-focused fieldset { border-color: #0ea5e9 !important; border-width: 2px !important; }
+.ge-modal-input .MuiOutlinedInput-root.Mui-disabled { background-color: #e2e8f0 !important; color: #475569 !important; }
+
+/* LISTA DE BUSQUEDA (SIN SCROLLBAR VISIBLE) */
+.ge-product-list {
+    position: absolute; z-index: 100; width: 100%; margin-top: 5px;
+    max-height: 200px; overflow-y: auto;
+    border-radius: 8px; background: #ffffff;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.2);
+    border: 1px solid #e2e8f0;
+    
+    /* OCULTAR SCROLL */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.ge-product-list::-webkit-scrollbar { display: none; }
+
+.ge-product-item { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: #1e293b; }
+.ge-product-item:hover { background-color: #e0f2fe; }
+
+/* TABLA DENTRO DEL MODAL (SIN SCROLLBAR VISIBLE Y BORDE RECTO) */
+.ge-modal-table-container {
+    background-color: #ffffff !important;
+    border-radius: 8px !important; /* Borde más recto */
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    margin-top: 10px;
+}
+.ge-qty-input input { text-align: center; font-weight: bold; color: #0f172a !important; }
+
+/* ALERTA */
+.ge-alert-paper { background: #ffffff !important; border-radius: 16px !important; color: #1e293b; }

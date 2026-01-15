@@ -1,0 +1,92 @@
+/* =========================================
+   ESTILOS GENERALES (Títulos y Tablas)
+   ========================================= */
+
+.gu-title {
+  color: #f1f5f9; 
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.gu-card {
+  width: 100%;
+  box-sizing: border-box;
+  /* Fondo tarjeta suave */
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: 16px;
+  padding: 24px;
+  color: #1e293b;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* --- Inputs y Formularios --- */
+.gu-input .MuiInputLabel-root {
+  color: #475569 !important;
+  font-weight: 500;
+}
+
+/* Los inputs deben ser blancos sólidos para que se pueda leer bien sobre el vidrio */
+.gu-input .MuiOutlinedInput-root {
+  background-color: #ffffff !important; 
+  color: #0f172a !important;
+  border-radius: 8px;
+}
+.gu-input .MuiOutlinedInput-root:hover fieldset {
+  border-color: #94a3b8 !important;
+}
+.gu-input .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #0ea5e9 !important;
+  border-width: 2px !important;
+}
+
+/* --- Tabla --- */
+.gu-table-container { width: 100%; overflow-x: auto; }
+.gu-table-head { background-color: #f1f5f9 !important; border-bottom: 2px solid #e2e8f0 !important; }
+.gu-table-header-cell { color: #334155 !important; font-weight: 700 !important; text-transform: uppercase; font-size: 0.75rem !important; }
+.gu-table-cell { color: #334155 !important; border-bottom: 1px solid #e2e8f0 !important; }
+
+
+/* =========================================
+   EFECTO VIDRIO EXTREMO (GLASSMORPHISM)
+   ========================================= */
+
+/* 1. EL FONDO DE ATRÁS (Backdrop) 
+   Esto hace que toda tu aplicación detrás del modal se vea borrosa */
+.MuiDialog-root .MuiBackdrop-root {
+    background-color: rgba(0, 0, 0, 0.2) !important; /* Oscuro muy suave */
+    backdrop-filter: blur(8px) !important;           /* DESENFOQUE DEL FONDO */
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* 2. LA VENTANA MODAL (El Vidrio) */
+.gu-modal-paper {
+  /* Fondo MUY transparente (0.15) para ver a través */
+  background: rgba(255, 255, 255, 0.15) !important;
+
+  /* Desenfoque fuerte del contenido inmediato */
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px);
+
+  /* Borde BLANCO SÓLIDO y notorio como pediste */
+  border: 2px solid rgba(255, 255, 255, 0.95) !important;
+
+  /* Sombra para despegarlo del fondo */
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+  
+  border-radius: 20px !important;
+}
+
+/* Título del Modal */
+.gu-modal-title {
+    color: #ffffff; /* Texto blanco o muy oscuro según tu preferencia, blanco resalta más en vidrio oscuro */
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3); /* Sombra al texto para leerse mejor */
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Botones dentro del modal */
+.gu-modal-paper button {
+    font-weight: bold;
+}

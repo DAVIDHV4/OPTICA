@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+*/node_modules/
+
+# Archivos de entorno (Seguridad)
+.env
+*/.env
+
+# Builds de producción
+build/
+dist/
+
+# Logs del sistema
+*.log
+npm-debug.log*
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db

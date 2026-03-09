@@ -25,7 +25,8 @@ import '../styles/DashboardAdmin.css';
 import GestionUsuarios from './admin/GestionUsuarios';
 import GestionProductos from './admin/GestionProductos';
 import GestionInventarios from './admin/GestionInventarios';
-import GestionEntradas from './admin/GestionEntradas'; // IMPORTACIÓN NUEVA
+import GestionEntradas from './admin/GestionEntradas'; 
+import GestionSalidas from './admin/GestionSalidas'; // IMPORTACIÓN NUEVA
 
 function DashboardAdmin({ usuario, cerrarSesion }) {
   const [vistaActual, setVistaActual] = useState('Resumen');
@@ -238,18 +239,13 @@ function DashboardAdmin({ usuario, cerrarSesion }) {
               </Paper>
             )}
             
-            {/* AQUÍ SE RENDERIZA EL NUEVO COMPONENTE */}
             {vistaActual === 'Entradas' && <GestionEntradas usuario={usuario} />}
 
-           {vistaActual === 'ListaInventarios' && <GestionInventarios />}
+            {vistaActual === 'ListaInventarios' && <GestionInventarios />}
 
-             {vistaActual === 'Salidas' && (
-              <Paper className="dashboard-card">
-                <Typography variant="h6">Salidas</Typography>
-              </Paper>
-            )}
+            {vistaActual === 'Salidas' && <GestionSalidas usuario={usuario} />}
 
-             {vistaActual === 'Transferencias' && (
+            {vistaActual === 'Transferencias' && (
               <Paper className="dashboard-card">
                 <Typography variant="h6">Transferencias</Typography>
               </Paper>

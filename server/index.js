@@ -18,12 +18,10 @@ const pool = new Pool({
   database: process.env.DB_NAME
 });
 
-// --- RUTA: LOGIN (AHORA BUSCA SIEMPRE EN MAYÚSCULA) ---
+// --- LOGIN ---
 app.post('/api/login', async (req, res) => {
   try {
     const { usuario, password } = req.body;
-
-    // 1. FORZAMOS MAYÚSCULAS para buscar el usuario
     const usuarioUpper = usuario.toUpperCase();
 
     const resultado = await pool.query('SELECT * FROM usuarios WHERE usuario = $1', [usuarioUpper]);
@@ -63,7 +61,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- RUTA: CREAR USUARIO (GUARDA TODO EN MAYÚSCULAS) ---
+// --- USUARIOS ---
 app.post('/api/usuarios', async (req, res) => {
   const client = await pool.connect(); 
   try {
@@ -71,26 +69,21 @@ app.post('/api/usuarios', async (req, res) => {
 
     const { nombres, apellido_paterno, apellido_materno, dni, fecha_nacimiento, usuario, password, rol, sedesIds } = req.body;
 
-    // 1. CONVERSIÓN A MAYÚSCULAS (Regla de negocio)
-    // El apellido materno puede venir vacío, así que usamos un ternario
     const nombresUp = nombres.toUpperCase();
     const patUp = apellido_paterno.toUpperCase();
     const matUp = apellido_materno ? apellido_materno.toUpperCase() : '';
     const usuarioUp = usuario.toUpperCase();
     const dniUp = dni.toUpperCase();
 
-    // 2. Validar si existe (Usamos las variables en mayúscula)
     const userExist = await client.query('SELECT * FROM usuarios WHERE usuario = $1 OR dni = $2', [usuarioUp, dniUp]);
     if (userExist.rows.length > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: "El nombre de usuario o DNI ya está en uso." });
     }
 
-    // 3. Hashear contraseña
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(password, salt);
 
-    // 4. Insertar Usuario (Usamos variables Up)
     const nuevoUsuario = await client.query(
       `INSERT INTO usuarios 
        (nombres, apellido_paterno, apellido_materno, dni, fecha_nacimiento, usuario, password, rol) 
@@ -101,7 +94,6 @@ app.post('/api/usuarios', async (req, res) => {
     
     const usuarioId = nuevoUsuario.rows[0].id;
 
-    // 5. Asignar Sedes
     if ((rol === 'Vendedor' || rol === 'Almacenero') && sedesIds && sedesIds.length > 0) {
       for (const sedeId of sedesIds) {
         const idLimpio = parseInt(sedeId);
@@ -126,7 +118,6 @@ app.post('/api/usuarios', async (req, res) => {
   }
 });
 
-// --- RUTA: LISTAR USUARIOS ---
 app.get('/api/usuarios', async (req, res) => {
   try {
     const todos = await pool.query('SELECT * FROM usuarios ORDER BY id DESC');
@@ -136,7 +127,6 @@ app.get('/api/usuarios', async (req, res) => {
   }
 });
 
-// --- RUTA: EDITAR USUARIO (ACTUALIZA EN MAYÚSCULAS) ---
 app.put('/api/usuarios/:id', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -144,14 +134,12 @@ app.put('/api/usuarios/:id', async (req, res) => {
     const { id } = req.params;
     const { nombres, apellido_paterno, apellido_materno, dni, fecha_nacimiento, usuario, password, rol, sedesIds } = req.body;
 
-    // 1. CONVERSIÓN A MAYÚSCULAS
     const nombresUp = nombres.toUpperCase();
     const patUp = apellido_paterno.toUpperCase();
     const matUp = apellido_materno ? apellido_materno.toUpperCase() : '';
     const usuarioUp = usuario.toUpperCase();
     const dniUp = dni.toUpperCase();
 
-    // 2. Actualizar datos básicos
     if (password && password.trim() !== "") {
         const salt = await bcrypt.genSalt(10);
         const hashPassword = await bcrypt.hash(password, salt);
@@ -173,7 +161,6 @@ app.put('/api/usuarios/:id', async (req, res) => {
         );
     }
 
-    // 3. Actualizar Sedes
     if (rol === 'Vendedor' || rol === 'Almacenero') {
         await client.query('DELETE FROM usuarios_sedes WHERE usuario_id = $1', [id]);
         if (sedesIds && sedesIds.length > 0) {
@@ -198,7 +185,6 @@ app.put('/api/usuarios/:id', async (req, res) => {
   }
 });
 
-// --- RUTA: OBTENER SEDES DE UN USUARIO ESPECÍFICO ---
 app.get('/api/usuarios/:id/sedes', async (req, res) => {
   try {
     const { id } = req.params;
@@ -214,7 +200,7 @@ app.get('/api/usuarios/:id/sedes', async (req, res) => {
   }
 });
 
-// --- RUTAS DE PRODUCTOS ---
+// --- PRODUCTOS ---
 app.get('/api/productos', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM productos ORDER BY id DESC');
@@ -226,7 +212,10 @@ app.get('/api/productos', async (req, res) => {
 
 app.post('/api/productos', async (req, res) => {
   try {
-    const { codigo, descripcion, categoria, marca, color, tipo, modelo, precio_venta } = req.body;
+    const { 
+        codigo, codigo_p, descripcion, categoria, 
+        marca, color, material, modelo, precio_venta, tipo_bien 
+    } = req.body;
 
     const duplicado = await pool.query('SELECT * FROM productos WHERE codigo = $1', [codigo]);
     if (duplicado.rows.length > 0) {
@@ -234,23 +223,23 @@ app.post('/api/productos', async (req, res) => {
     }
 
     const marcaFinal = categoria === 'LUNA' ? null : marca;
+    const tipoBienFinal = tipo_bien || 'PRODUCTO';
 
     const nuevoProducto = await pool.query(
       `INSERT INTO productos 
-      (codigo, descripcion, categoria, marca, color, tipo, modelo, precio_venta) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      (codigo, codigo_p, descripcion, categoria, marca, color, material, modelo, precio_venta, tipo_bien, stock) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0) 
       RETURNING *`,
-      [codigo, descripcion, categoria, marcaFinal, color, tipo, modelo, precio_venta]
+      [codigo, codigo_p, descripcion, categoria, marcaFinal, color, material, modelo, precio_venta, tipoBienFinal]
     );
 
     res.json(nuevoProducto.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("Error backend creando producto:", error);
     res.status(500).json({ error: "Error al crear producto" });
   }
 });
 
-// --- RUTA: LISTAR SEDES ---
 app.get('/api/sedes', async (req, res) => {
   try {
     const sedes = await pool.query('SELECT id, nombre, codigo FROM sedes WHERE activo = true ORDER BY id ASC');
@@ -261,17 +250,14 @@ app.get('/api/sedes', async (req, res) => {
   }
 });
 
-// --- RUTA: INVENTARIO POR SEDE ---
 app.get('/api/inventario/:sede_id', async (req, res) => {
   try {
     const { sede_id } = req.params;
-
     const query = `
-      SELECT A.CODIGO, A.DESCRIPCION, B.CANTIDAD, B.PRECIO_VENTA
+      SELECT A.ID, A.CODIGO, A.DESCRIPCION, B.CANTIDAD, B.PRECIO_VENTA
       FROM PRODUCTOS A JOIN INVENTARIO B ON B.PRODUCTO_ID=A.ID
       WHERE B.SEDE_ID=$1
     `;
-
     const result = await pool.query(query, [sede_id]);
     res.json(result.rows);
   } catch (error) {
@@ -280,20 +266,10 @@ app.get('/api/inventario/:sede_id', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Servidor actualizado corriendo en puerto ${PORT}`);
-});
-
-// ==========================================
-//  NUEVO MÓDULO: GUÍAS DE ENTRADA
-// ==========================================
-
-// 1. LISTAR ENTRADAS (CON FILTROS)
+// --- ENTRADAS ---
 app.get('/api/entradas', async (req, res) => {
     try {
-        const { sede_id, tipo, fecha_inicio, fecha_fin } = req.query;
-        
+        const { sede_id, tipo } = req.query;
         let query = `
             SELECT g.*, s.nombre as nombre_sede, u.usuario as nombre_encargado 
             FROM guias_entrada g
@@ -312,7 +288,6 @@ app.get('/api/entradas', async (req, res) => {
             query += ` AND g.tipo_entrada = $${counter++}`;
             params.push(tipo);
         }
-        // Puedes agregar lógica de fechas aquí si lo necesitas
 
         query += ` ORDER BY g.created_at DESC`;
 
@@ -324,18 +299,15 @@ app.get('/api/entradas', async (req, res) => {
     }
 });
 
-// 2. OBTENER SERIE PARA UNA SEDE
 app.get('/api/entradas/serie/:sede_id', async (req, res) => {
     try {
         const { sede_id } = req.params;
-        // Buscar la serie configurada para entradas en esa sede
         const result = await pool.query(
             "SELECT serie, ultimo_numero FROM series_sedes WHERE sede_id = $1 AND tipo_documento = 'GUIA_ENTRADA'", 
             [sede_id]
         );
         
         if (result.rows.length === 0) {
-            // Si no existe configuración, devolvemos un genérico (O podrías crearla al vuelo)
             return res.json({ serie: 'GEN', numero: 1 });
         }
 
@@ -346,7 +318,6 @@ app.get('/api/entradas/serie/:sede_id', async (req, res) => {
     }
 });
 
-// 3. CREAR NUEVA GUÍA DE ENTRADA (TRANSACCIÓN COMPLETA)
 app.post('/api/entradas', async (req, res) => {
     const client = await pool.connect();
     try {
@@ -356,7 +327,6 @@ app.post('/api/entradas', async (req, res) => {
             fecha, nro_comprobante, productos, total_global 
         } = req.body;
 
-        // A. OBTENER Y ACTUALIZAR CORRELATIVO
         const serieData = await client.query(
             "SELECT serie, ultimo_numero FROM series_sedes WHERE sede_id = $1 AND tipo_documento = 'GUIA_ENTRADA' FOR UPDATE",
             [sede_id]
@@ -368,13 +338,11 @@ app.post('/api/entradas', async (req, res) => {
         if (serieData.rows.length > 0) {
             serie = serieData.rows[0].serie;
             numero = serieData.rows[0].ultimo_numero + 1;
-            // Actualizamos el último número usado
             await client.query(
                 "UPDATE series_sedes SET ultimo_numero = $1 WHERE sede_id = $2 AND tipo_documento = 'GUIA_ENTRADA'",
                 [numero, sede_id]
             );
         } else {
-            // Si no existe la serie, creamos una por defecto E00{sede_id}
             serie = `E00${sede_id}`;
             await client.query(
                 "INSERT INTO series_sedes (sede_id, serie, ultimo_numero, tipo_documento) VALUES ($1, $2, $3, 'GUIA_ENTRADA')",
@@ -382,15 +350,12 @@ app.post('/api/entradas', async (req, res) => {
             );
         }
 
-        // Formatear número a 6 dígitos (ej: 000001)
         const numeroStr = numero.toString().padStart(6, '0');
 
-        // B. SI ES "SALDO INICIAL", BORRAMOS EL STOCK PREVIO DE ESA SEDE
         if (tipo_entrada === 'SALDO INICIAL') {
             await client.query('DELETE FROM inventario WHERE sede_id = $1', [sede_id]);
         }
 
-        // C. INSERTAR CABECERA (GUÍA)
         const nuevaGuia = await client.query(
             `INSERT INTO guias_entrada 
             (sede_id, usuario_id, solicitante, tipo_entrada, fecha, serie, numero, nro_comprobante, total_monto)
@@ -400,40 +365,34 @@ app.post('/api/entradas', async (req, res) => {
         );
         const guiaId = nuevaGuia.rows[0].id;
 
-        // D. PROCESAR PRODUCTOS (Detalle + Stock)
         for (const prod of productos) {
-            // 1. Insertar Detalle
-            // Asumimos precio_venta como referencia de costo si no hay costo real, o 0.
-            // OJO: Idealmente 'prod.costo' debería venir del frontend. Usaremos el precio como valor referencial del movimiento.
-            const costo = prod.precio_venta || 0; 
-            const totalLinea = prod.cantidad * costo;
+            if (prod.tipo_bien !== 'SERVICIO') {
+                const costo = prod.precio_venta || 0; 
+                const totalLinea = prod.cantidad * costo;
 
-            await client.query(
-                `INSERT INTO detalle_guia_entrada (guia_id, producto_id, cantidad, costo_unitario, total_linea)
-                 VALUES ($1, $2, $3, $4, $5)`,
-                [guiaId, prod.id, prod.cantidad, costo, totalLinea]
-            );
-
-            // 2. Actualizar Stock (Upsert)
-            // Si fue SALDO INICIAL, ya borramos todo, así que solo será INSERT.
-            // Si es AJUSTE o TRANSFERENCIA, puede ser UPDATE o INSERT.
-            
-            const existe = await client.query(
-                'SELECT cantidad FROM inventario WHERE sede_id = $1 AND producto_id = $2',
-                [sede_id, prod.id]
-            );
-
-            if (existe.rows.length > 0) {
                 await client.query(
-                    'UPDATE inventario SET cantidad = cantidad + $1 WHERE sede_id = $2 AND producto_id = $3',
-                    [prod.cantidad, sede_id, prod.id]
+                    `INSERT INTO detalle_guia_entrada (guia_id, producto_id, cantidad, costo_unitario, total_linea)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [guiaId, prod.id, prod.cantidad, costo, totalLinea]
                 );
-            } else {
-                await client.query(
-                    `INSERT INTO inventario (sede_id, producto_id, cantidad, precio_venta) 
-                     VALUES ($1, $2, $3, $4)`,
-                    [sede_id, prod.id, prod.cantidad, prod.precio_venta]
+
+                const existe = await client.query(
+                    'SELECT cantidad FROM inventario WHERE sede_id = $1 AND producto_id = $2',
+                    [sede_id, prod.id]
                 );
+
+                if (existe.rows.length > 0) {
+                    await client.query(
+                        'UPDATE inventario SET cantidad = cantidad + $1 WHERE sede_id = $2 AND producto_id = $3',
+                        [prod.cantidad, sede_id, prod.id]
+                    );
+                } else {
+                    await client.query(
+                        `INSERT INTO inventario (sede_id, producto_id, cantidad, precio_venta) 
+                         VALUES ($1, $2, $3, $4)`,
+                        [sede_id, prod.id, prod.cantidad, prod.precio_venta]
+                    );
+                }
             }
         }
 
@@ -447,4 +406,152 @@ app.post('/api/entradas', async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+// --- SALIDAS (CORREGIDO: SE AGREGÓ LA RUTA GET QUE FALTABA) ---
+
+// 1. LISTAR SALIDAS (ESTA ERA LA QUE FALTABA)
+app.get('/api/salidas', async (req, res) => {
+    try {
+        const { sede_id, tipo } = req.query;
+        let query = `
+            SELECT s.*, 
+                   sed.nombre as nombre_sede, 
+                   sed_dest.nombre as nombre_destino,
+                   u.usuario as nombre_usuario
+            FROM guias_salida s
+            JOIN sedes sed ON s.sede_id = sed.id
+            JOIN usuarios u ON s.usuario_id = u.id
+            LEFT JOIN sedes sed_dest ON s.sede_destino_id = sed_dest.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let counter = 1;
+
+        if (sede_id && sede_id !== 'todas') {
+            query += ` AND s.sede_id = $${counter++}`;
+            params.push(sede_id);
+        }
+        if (tipo && tipo !== 'todos') {
+            query += ` AND s.tipo_salida = $${counter++}`;
+            params.push(tipo);
+        }
+
+        query += ` ORDER BY s.created_at DESC`;
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error listando salidas" });
+    }
+});
+
+app.get('/api/salidas/serie/:sede_id', async (req, res) => {
+    try {
+        const { sede_id } = req.params;
+        const result = await pool.query(
+            "SELECT serie, ultimo_numero FROM series_sedes WHERE sede_id = $1 AND tipo_documento = 'GUIA_SALIDA'", 
+            [sede_id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.json({ serie: 'S000', numero: 1 });
+        }
+
+        const info = result.rows[0];
+        res.json({ serie: info.serie, numero: info.ultimo_numero + 1 });
+    } catch (error) {
+        res.status(500).json({ error: "Error obteniendo serie salida" });
+    }
+});
+
+app.post('/api/salidas', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { 
+            sede_id, usuario_id, tipo_salida, fecha, 
+            sede_destino_id, observacion, productos 
+        } = req.body;
+
+        for (const prod of productos) {
+            const stockCheck = await client.query(
+                'SELECT cantidad FROM inventario WHERE sede_id = $1 AND producto_id = $2',
+                [sede_id, prod.id]
+            );
+            const stockActual = stockCheck.rows.length > 0 ? stockCheck.rows[0].cantidad : 0;
+            
+            if (stockActual < prod.cantidad) {
+                throw new Error(`Stock insuficiente para el producto ${prod.codigo}. Disponible: ${stockActual}, Solicitado: ${prod.cantidad}`);
+            }
+        }
+
+        const serieData = await client.query(
+            "SELECT serie, ultimo_numero FROM series_sedes WHERE sede_id = $1 AND tipo_documento = 'GUIA_SALIDA' FOR UPDATE",
+            [sede_id]
+        );
+        
+        let serie = 'S000';
+        let numero = 1;
+
+        if (serieData.rows.length > 0) {
+            serie = serieData.rows[0].serie;
+            numero = serieData.rows[0].ultimo_numero + 1;
+            await client.query(
+                "UPDATE series_sedes SET ultimo_numero = $1 WHERE sede_id = $2 AND tipo_documento = 'GUIA_SALIDA'",
+                [numero, sede_id]
+            );
+        } else {
+            serie = `S00${sede_id}`;
+            await client.query(
+                "INSERT INTO series_sedes (sede_id, serie, ultimo_numero, tipo_documento) VALUES ($1, $2, $3, 'GUIA_SALIDA')",
+                [sede_id, serie, 1]
+            );
+        }
+
+        const numeroStr = numero.toString().padStart(6, '0');
+        const nro_comprobante = `${serie}-${numeroStr}`;
+
+        const estado = tipo_salida === 'TRANSFERENCIA' ? 'PENDIENTE' : 'COMPLETADO';
+
+        const nuevaGuia = await client.query(
+            `INSERT INTO guias_salida 
+            (sede_id, usuario_id, tipo_salida, fecha, serie, numero, nro_comprobante, observacion, sede_destino_id, estado)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING id`,
+            [sede_id, usuario_id, tipo_salida, fecha, serie, numeroStr, nro_comprobante, observacion, sede_destino_id || null, estado]
+        );
+        const guiaId = nuevaGuia.rows[0].id;
+
+        for (const prod of productos) {
+            await client.query(
+                `INSERT INTO detalle_guia_salida (guia_salida_id, producto_id, cantidad, precio_referencial)
+                 VALUES ($1, $2, $3, $4)`,
+                [guiaId, prod.id, prod.cantidad, prod.precio_venta]
+            );
+
+            if (tipo_salida === 'AJUSTE') {
+                await client.query(
+                    'UPDATE inventario SET cantidad = cantidad - $1 WHERE sede_id = $2 AND producto_id = $3',
+                    [prod.cantidad, sede_id, prod.id]
+                );
+            }
+        }
+
+        await client.query('COMMIT');
+        res.json({ message: "Salida registrada correctamente", guia_id: guiaId, estado: estado });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(error);
+        res.status(400).json({ error: error.message || "Error registrando salida" });
+    } finally {
+        client.release();
+    }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Servidor actualizado corriendo en puerto ${PORT}`);
 });

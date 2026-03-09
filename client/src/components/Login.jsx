@@ -92,8 +92,7 @@ function Login({ alIngresar }) {
                 fullWidth
                 className="login-input"
                 value={usuario}
-                // --- CAMBIO AQUÍ: Forzar mayúsculas al escribir ---
-                onChange={(e) => setUsuario(e.target.value.toUpperCase())}
+                onChange={(e) => setUsuario(e.target.value)}
                 InputProps={{ disableUnderline: true }}
               />
               <TextField

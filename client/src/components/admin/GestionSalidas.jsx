@@ -18,17 +18,17 @@ import axios from 'axios';
 import '../../styles/GestionEntradas.css'; 
 
 function GestionSalidas({ usuario }) {
-  // --- ESTADOS ---
   const [salidas, setSalidas] = useState([]); 
   const [sedes, setSedes] = useState([]);
   const [inventarioSede, setInventarioSede] = useState([]); 
   
-  // Filtros
   const [filtroSede, setFiltroSede] = useState('todas');
   const [filtroTipo, setFiltroTipo] = useState('todos');
 
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmClose, setOpenConfirmClose] = useState(false);
+  const [openConfirmAnular, setOpenConfirmAnular] = useState(false);
+  const [guiaAAnular, setGuiaAAnular] = useState(null);
   
   const [busquedaProd, setBusquedaProd] = useState('');
   
@@ -44,8 +44,8 @@ function GestionSalidas({ usuario }) {
   
   const [carrito, setCarrito] = useState([]);
   const [mensaje, setMensaje] = useState(null);
+  const [mensajeGeneral, setMensajeGeneral] = useState(null);
 
-  // --- EFECTOS ---
   useEffect(() => {
     cargarSedes();
     cargarSalidas();
@@ -63,7 +63,6 @@ function GestionSalidas({ usuario }) {
     }
   }, [nuevaSalida.sede_id]);
 
-  // --- CARGAS DE DATOS ---
   const cargarSedes = async () => {
     try { const res = await axios.get('http://localhost:5000/api/sedes'); setSedes(res.data); } catch(e) { console.error(e); }
   };
@@ -95,7 +94,6 @@ function GestionSalidas({ usuario }) {
     } catch(e) { console.error(e); }
   };
 
-  // --- MANEJO DEL MODAL ---
   const handleOpen = () => {
     setMensaje(null);
     setNuevaSalida({
@@ -124,7 +122,25 @@ function GestionSalidas({ usuario }) {
     setOpenModal(false);
   };
 
-  // --- LÓGICA DEL CARRITO ---
+  const confirmarAnulacion = (guia) => {
+    setGuiaAAnular(guia);
+    setOpenConfirmAnular(true);
+  };
+
+  const ejecutarAnulacion = async () => {
+    try {
+        await axios.put(`http://localhost:5000/api/salidas/${guiaAAnular.id}/anular`);
+        setMensajeGeneral({ tipo: 'success', texto: 'Guía anulada y stock revertido correctamente.' });
+        setOpenConfirmAnular(false);
+        cargarSalidas();
+        setTimeout(() => setMensajeGeneral(null), 4000);
+    } catch (err) {
+        console.error(err);
+        setMensajeGeneral({ tipo: 'error', texto: err.response?.data?.error || 'Error al anular la guía.' });
+        setOpenConfirmAnular(false);
+    }
+  };
+
   const agregarProducto = (prodInventario) => {
     if (prodInventario.cantidad <= 0) {
         setMensaje({ tipo: 'warning', texto: 'No hay stock disponible de este producto.' });
@@ -162,7 +178,6 @@ function GestionSalidas({ usuario }) {
     setCarrito(carrito.filter(p => p.codigo !== codigo));
   };
 
-  // --- GUARDAR SALIDA ---
   const handleSubmit = async () => {
     if (!nuevaSalida.sede_id || carrito.length === 0) {
         setMensaje({ tipo: 'error', texto: 'Seleccione Sede y agregue productos.' });
@@ -196,7 +211,9 @@ function GestionSalidas({ usuario }) {
         });
 
         setOpenModal(false);
+        setMensajeGeneral({ tipo: 'success', texto: 'Guía generada y stock descontado correctamente.' });
         cargarSalidas(); 
+        setTimeout(() => setMensajeGeneral(null), 4000);
         
     } catch (err) {
         console.error(err);
@@ -213,7 +230,6 @@ function GestionSalidas({ usuario }) {
 
   return (
     <Box className="ge-container">
-      {/* HEADER Y BOTÓN NUEVO */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" className="ge-title">Gestión de Salidas</Typography>
         <Button 
@@ -226,18 +242,29 @@ function GestionSalidas({ usuario }) {
         </Button>
       </Box>
 
-      {/* FILTROS */}
+      {mensajeGeneral && <Alert severity={mensajeGeneral.tipo} sx={{ mb: 3 }}>{mensajeGeneral.texto}</Alert>}
+
       <Paper className="ge-card" sx={{ p: 2, display: 'flex', gap: 2, mb: 3 }}>
         <FormControl size="small" sx={{ minWidth: 200 }} className="ge-input-glass">
-            <InputLabel>Filtrar por Sede</InputLabel>
-            <Select value={filtroSede} label="Filtrar por Sede" onChange={(e) => setFiltroSede(e.target.value)}>
+            <InputLabel shrink>Filtrar por Sede</InputLabel>
+            <Select 
+                value={filtroSede} 
+                onChange={(e) => setFiltroSede(e.target.value)}
+                displayEmpty
+                label="Filtrar por Sede"
+            >
                 <MenuItem value="todas">Todas</MenuItem>
                 {sedes.map(s => <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>)}
             </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 200 }} className="ge-input-glass">
-            <InputLabel>Tipo de Salida</InputLabel>
-            <Select value={filtroTipo} label="Tipo de Salida" onChange={(e) => setFiltroTipo(e.target.value)}>
+            <InputLabel shrink>Tipo de Salida</InputLabel>
+            <Select 
+                value={filtroTipo} 
+                onChange={(e) => setFiltroTipo(e.target.value)}
+                displayEmpty
+                label="Tipo de Salida"
+            >
                 <MenuItem value="todos">Todos</MenuItem>
                 <MenuItem value="AJUSTE">Ajuste</MenuItem>
                 <MenuItem value="TRANSFERENCIA">Transferencia</MenuItem>
@@ -245,7 +272,6 @@ function GestionSalidas({ usuario }) {
         </FormControl>
       </Paper>
 
-      {/* TABLA HISTORIAL */}
       <TableContainer component={Paper} className="ge-card ge-table-container" sx={{ p: 0 }}>
         <Table>
             <TableHead className="ge-table-head">
@@ -257,13 +283,14 @@ function GestionSalidas({ usuario }) {
                     <TableCell className="ge-table-header-cell">Destino / Obs</TableCell>
                     <TableCell className="ge-table-header-cell">Responsable</TableCell>
                     <TableCell className="ge-table-header-cell">Estado</TableCell>
+                    <TableCell className="ge-table-header-cell" align="center">Acciones</TableCell>
                 </TableRow>
             </TableHead>
             <TableBody>
                 {salidas.map((row) => (
-                    <TableRow key={row.id} className="ge-table-row">
+                    <TableRow key={row.id} className="ge-table-row" sx={{ opacity: row.estado === 'ANULADO' ? 0.6 : 1 }}>
                         <TableCell className="ge-table-cell">{new Date(row.fecha).toLocaleDateString()}</TableCell>
-                        <TableCell className="ge-table-cell" sx={{ fontWeight: 'bold' }}>{row.nro_comprobante}</TableCell>
+                        <TableCell className="ge-table-cell" sx={{ fontWeight: 'bold', textDecoration: row.estado === 'ANULADO' ? 'line-through' : 'none' }}>{row.nro_comprobante}</TableCell>
                         <TableCell className="ge-table-cell">{row.nombre_sede}</TableCell>
                         <TableCell className="ge-table-cell">
                             <Chip 
@@ -289,21 +316,29 @@ function GestionSalidas({ usuario }) {
                                 label={row.estado} size="small" 
                                 sx={{ 
                                     fontWeight: 'bold', 
-                                    bgcolor: row.estado === 'PENDIENTE' ? '#fef3c7' : '#dcfce7', 
-                                    color: row.estado === 'PENDIENTE' ? '#b45309' : '#16a34a' 
+                                    bgcolor: row.estado === 'PENDIENTE' ? '#fef3c7' : row.estado === 'ANULADO' ? '#f1f5f9' : '#dcfce7', 
+                                    color: row.estado === 'PENDIENTE' ? '#b45309' : row.estado === 'ANULADO' ? '#64748b' : '#16a34a' 
                                 }} 
                             />
+                        </TableCell>
+                        <TableCell className="ge-table-cell" align="center">
+                            {row.estado !== 'ANULADO' ? (
+                                <IconButton size="small" sx={{ color: '#ef4444' }} onClick={() => confirmarAnulacion(row)}>
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            ) : (
+                                <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 'bold' }}>---</span>
+                            )}
                         </TableCell>
                     </TableRow>
                 ))}
                 {salidas.length === 0 && (
-                    <TableRow><TableCell colSpan={7} align="center" className="ge-table-cell">No hay salidas registradas.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} align="center" className="ge-table-cell">No hay salidas registradas.</TableCell></TableRow>
                 )}
             </TableBody>
         </Table>
       </TableContainer>
 
-      {/* MODAL NUEVA SALIDA */}
       <Dialog open={openModal} onClose={handleCloseRequest} maxWidth="md" fullWidth PaperProps={{ className: 'ge-modal-paper' }}>
         <DialogTitle className="ge-modal-title" sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: '#b91c1c' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -316,14 +351,12 @@ function GestionSalidas({ usuario }) {
             {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 2, mt: 2 }}>{mensaje.texto}</Alert>}
             
             <Box sx={{ mt: 2 }}>
-                
                 <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'rgba(255,255,255,0.5)', border: '1px solid #e2e8f0' }}>
                     <Typography variant="subtitle2" sx={{ mb: 2, color: '#475569', display:'flex', alignItems:'center', gap:1 }}>
                         <StoreIcon fontSize="small"/> DATOS DE ORIGEN Y TIPO
                     </Typography>
                     <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
-                            {/* MEJORA VISUAL AQUI: SELECT CON PLACEHOLDER */}
                             <FormControl fullWidth size="small">
                                 <Select 
                                     displayEmpty
@@ -331,7 +364,7 @@ function GestionSalidas({ usuario }) {
                                     onChange={(e) => setNuevaSalida({...nuevaSalida, sede_id: e.target.value})}
                                     sx={{ bgcolor: 'white' }}
                                     renderValue={(selected) => {
-                                        if (!selected) return <span style={{ color: '#94a3b8' }}>Seleccione Sede Origen</span>;
+                                        if (!selected) return <span style={{ color: '#94a3b8' }}>Seleccione una Sede de Origen</span>;
                                         const s = sedes.find(x => x.id === selected);
                                         return s ? s.nombre : '';
                                     }}
@@ -360,7 +393,6 @@ function GestionSalidas({ usuario }) {
                     <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#eff6ff', border: '1px dashed #3b82f6' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <LocalShippingIcon sx={{ color: '#2563eb' }} />
-                            {/* MEJORA VISUAL AQUI: SELECT DESTINO CON PLACEHOLDER */}
                             <FormControl fullWidth size="small">
                                 <Select 
                                     displayEmpty
@@ -385,31 +417,16 @@ function GestionSalidas({ usuario }) {
 
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                     <Grid item xs={4}>
-                        <TextField 
-                            label="Fecha" type="date" size="small" fullWidth 
-                            value={nuevaSalida.fecha} onChange={(e) => setNuevaSalida({...nuevaSalida, fecha: e.target.value})} 
-                            sx={{ bgcolor: 'rgba(255,255,255,0.5)' }}
-                        />
+                        <TextField label="Fecha" type="date" size="small" fullWidth value={nuevaSalida.fecha} onChange={(e) => setNuevaSalida({...nuevaSalida, fecha: e.target.value})} sx={{ bgcolor: 'rgba(255,255,255,0.5)' }} />
                     </Grid>
                     <Grid item xs={4}>
-                        <TextField 
-                            label="Nro Guía" value={`${nuevaSalida.serie}-${nuevaSalida.numero}`} disabled size="small" fullWidth 
-                            sx={{ bgcolor: '#f1f5f9' }}
-                        />
+                        <TextField label="Nro Guía" value={`${nuevaSalida.serie}-${nuevaSalida.numero}`} disabled size="small" fullWidth sx={{ bgcolor: '#f1f5f9' }} />
                     </Grid>
                     <Grid item xs={4}>
-                        <TextField 
-                            label="Responsable" value={usuario.nombre} disabled size="small" fullWidth 
-                            sx={{ bgcolor: '#f1f5f9' }}
-                        />
+                        <TextField label="Responsable" value={usuario.nombre} disabled size="small" fullWidth sx={{ bgcolor: '#f1f5f9' }} />
                     </Grid>
                     <Grid item xs={12}>
-                        <TextField 
-                            label="Observación / Comentario" 
-                            value={nuevaSalida.observacion} onChange={(e) => setNuevaSalida({...nuevaSalida, observacion: e.target.value})} 
-                            fullWidth size="small" 
-                            sx={{ bgcolor: 'rgba(255,255,255,0.5)' }}
-                        />
+                        <TextField label="Observación / Comentario" value={nuevaSalida.observacion} onChange={(e) => setNuevaSalida({...nuevaSalida, observacion: e.target.value})} fullWidth size="small" sx={{ bgcolor: 'rgba(255,255,255,0.5)' }} />
                     </Grid>
                 </Grid>
 
@@ -424,10 +441,7 @@ function GestionSalidas({ usuario }) {
                         value={busquedaProd}
                         disabled={!nuevaSalida.sede_id}
                         onChange={(e) => setBusquedaProd(e.target.value.toUpperCase())}
-                        InputProps={{ 
-                            startAdornment: <SearchIcon sx={{ color: '#475569', mr: 1 }} />,
-                            sx: { bgcolor: 'white' }
-                        }}
+                        InputProps={{ startAdornment: <SearchIcon sx={{ color: '#475569', mr: 1 }} />, sx: { bgcolor: 'white' } }}
                     />
                     
                     {busquedaProd && (
@@ -487,7 +501,6 @@ function GestionSalidas({ usuario }) {
                         </TableBody>
                     </Table>
                 </TableContainer>
-
             </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
@@ -510,6 +523,21 @@ function GestionSalidas({ usuario }) {
         <DialogActions sx={{ p: 2 }}>
             <Button onClick={() => setOpenConfirmClose(false)} sx={{ color: '#64748b' }}>Continuar</Button>
             <Button onClick={confirmarCierre} variant="contained" color="error">Salir</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openConfirmAnular} onClose={() => setOpenConfirmAnular(false)} PaperProps={{ className: 'ge-alert-paper' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#ef4444' }}><WarningAmberIcon /> Confirmar Anulación</DialogTitle>
+        <DialogContent>
+            <DialogContentText sx={{ color: '#475569' }}>
+                ¿Está seguro que desea anular la guía <b>{guiaAAnular?.nro_comprobante}</b>? 
+                <br/><br/>
+                El stock será devuelto automáticamente al almacén de origen {guiaAAnular?.estado === 'COMPLETADO' && 'y se descontará de la sede destino'}. Esta acción no se puede deshacer.
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setOpenConfirmAnular(false)} sx={{ color: '#64748b' }}>Cancelar</Button>
+            <Button onClick={ejecutarAnulacion} variant="contained" color="error">Sí, Anular Guía</Button>
         </DialogActions>
       </Dialog>
     </Box>

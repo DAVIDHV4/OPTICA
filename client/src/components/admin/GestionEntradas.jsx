@@ -15,14 +15,13 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'; 
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/Info';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import '../../styles/GestionEntradas.css';
 
 function GestionEntradas({ usuario }) {
-  /* ===========================
-     ESTADOS
-     =========================== */
   const [entradas, setEntradas] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [filtroSede, setFiltroSede] = useState('todas');
@@ -31,10 +30,19 @@ function GestionEntradas({ usuario }) {
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmClose, setOpenConfirmClose] = useState(false);
   const [openModalProducto, setOpenModalProducto] = useState(false); 
+  const [openConfirmAnular, setOpenConfirmAnular] = useState(false);
+  const [guiaAAnular, setGuiaAAnular] = useState(null);
   
+  const [openModalDetalles, setOpenModalDetalles] = useState(false);
+  const [detallesGuia, setDetallesGuia] = useState([]);
+  const [guiaSeleccionada, setGuiaSeleccionada] = useState(null);
+
   const [productosCatalogo, setProductosCatalogo] = useState([]);
   const [busquedaProd, setBusquedaProd] = useState('');
   
+  const [transferenciasPendientes, setTransferenciasPendientes] = useState([]);
+  const [guiaOrigenId, setGuiaOrigenId] = useState(null);
+
   const [nuevaEntrada, setNuevaEntrada] = useState({
     sede_id: '',
     tipo_entrada: 'AJUSTE',
@@ -46,25 +54,16 @@ function GestionEntradas({ usuario }) {
   });
 
   const [nuevoProductoRapido, setNuevoProductoRapido] = useState({
-    codigo: '',
-    codigo_p: '', 
-    descripcion: '',
-    categoria: 'MONTURA',
-    marca: '',
-    modelo: '',
-    color: '',
-    material: '', 
-    precio_venta: ''
+    codigo: '', codigo_p: '', descripcion: '', categoria: 'MONTURA',
+    marca: '', modelo: '', color: '', material: '', precio_venta: ''
   });
   
   const [carrito, setCarrito] = useState([]);
   const [mensaje, setMensaje] = useState(null);
+  const [mensajeGeneral, setMensajeGeneral] = useState(null);
   const [mensajeProducto, setMensajeProducto] = useState(null);
   const fileInputRef = useRef(null);
 
-  /* ===========================
-     EFECTOS
-     =========================== */
   useEffect(() => {
     cargarSedes();
     cargarEntradas();
@@ -78,12 +77,12 @@ function GestionEntradas({ usuario }) {
   useEffect(() => {
     if (nuevaEntrada.sede_id) {
         obtenerSerie(nuevaEntrada.sede_id);
+        if (nuevaEntrada.tipo_entrada === 'TRANSFERENCIA') {
+            buscarTransferenciasPendientes(nuevaEntrada.sede_id);
+        }
     }
   }, [nuevaEntrada.sede_id]);
 
-  /* ===========================
-     FUNCIONES DE CARGA
-     =========================== */
   const cargarSedes = async () => {
     try { const res = await axios.get('http://localhost:5000/api/sedes'); setSedes(res.data); } catch(e) { console.error(e); }
   };
@@ -112,9 +111,38 @@ function GestionEntradas({ usuario }) {
     } catch(e) { console.error(e); }
   };
 
-  /* ===========================
-     MANEJO DEL MODAL
-     =========================== */
+  const buscarTransferenciasPendientes = async (idSede) => {
+      setMensaje({ tipo: 'info', texto: '🔄 Buscando transferencias entrantes para esta sede...' });
+      setCarrito([]);
+      setGuiaOrigenId(null);
+      
+      try {
+          const res = await axios.get(`http://localhost:5000/api/transferencias/pendientes/${idSede}`);
+          if (res.data.length > 0) {
+              setTransferenciasPendientes(res.data);
+              setMensaje({ tipo: 'success', texto: `🔔 Tienes ${res.data.length} transferencias pendientes de recepción.` });
+          } else {
+              setTransferenciasPendientes([]);
+              setMensaje({ tipo: 'info', texto: '✅ No hay transferencias pendientes para esta sede.' });
+          }
+      } catch (error) {
+          console.error(error);
+          setMensaje({ tipo: 'error', texto: 'Error al buscar transferencias.' });
+      }
+  };
+
+  const verDetalles = async (guia) => {
+      try {
+          const res = await axios.get(`http://localhost:5000/api/entradas/${guia.id}/detalles`);
+          setDetallesGuia(res.data);
+          setGuiaSeleccionada(guia);
+          setOpenModalDetalles(true);
+      } catch (error) {
+          console.error(error);
+          setMensajeGeneral({ tipo: 'error', texto: 'Error al cargar los detalles de la guía.' });
+      }
+  };
+
   const handleOpen = () => {
     setMensaje(null);
     setNuevaEntrada({
@@ -127,12 +155,13 @@ function GestionEntradas({ usuario }) {
         nro_comprobante: ''
     });
     setCarrito([]);
+    setTransferenciasPendientes([]);
+    setGuiaOrigenId(null);
     setOpenModal(true);
   };
 
   const handleCloseRequest = (event, reason) => {
     if (reason && reason === "backdropClick") return; 
-    
     if (nuevaEntrada.sede_id || carrito.length > 0 || nuevaEntrada.solicitante !== usuario.nombre) {
         setOpenConfirmClose(true);
     } else {
@@ -145,37 +174,60 @@ function GestionEntradas({ usuario }) {
     setOpenModal(false);
   };
 
+  const confirmarAnulacion = (guia) => {
+    setGuiaAAnular(guia);
+    setOpenConfirmAnular(true);
+  };
+
+  const ejecutarAnulacion = async () => {
+    try {
+        await axios.put(`http://localhost:5000/api/entradas/${guiaAAnular.id}/anular`);
+        setMensajeGeneral({ tipo: 'success', texto: 'Guía anulada correctamente.' });
+        setOpenConfirmAnular(false);
+        cargarEntradas();
+        setTimeout(() => setMensajeGeneral(null), 4000);
+    } catch (err) {
+        console.error(err);
+        setMensajeGeneral({ tipo: 'error', texto: err.response?.data?.error || 'Error al anular la guía.' });
+        setOpenConfirmAnular(false);
+    }
+  };
+
   const handleChangeTipo = (e) => {
     const tipoSeleccionado = e.target.value;
-
+    
     if (tipoSeleccionado === 'TRANSFERENCIA') {
         if (!nuevaEntrada.sede_id) {
             setMensaje({ tipo: 'warning', texto: '⚠️ Primero seleccione la SEDE para verificar sus transferencias.' });
             return; 
         }
-
-        setMensaje({ tipo: 'info', texto: '🔄 Buscando transferencias entrantes para esta sede...' });
-        setCarrito([]); 
-        
-        setTimeout(() => {
-            setMensaje({ tipo: 'info', texto: '✅ No se encontraron transferencias pendientes de recepción.' });
-        }, 800);
+        buscarTransferenciasPendientes(nuevaEntrada.sede_id);
     } else {
+        setTransferenciasPendientes([]);
+        setGuiaOrigenId(null);
+        setCarrito([]); 
         setMensaje(null);
     }
-
     setNuevaEntrada({ ...nuevaEntrada, tipo_entrada: tipoSeleccionado });
   };
 
-  /* ===========================
-     LOGICA CARRITO
-     =========================== */
+  const cargarProductosDeTransferencia = (transferencia) => {
+      const productosTransformados = transferencia.productos.map(p => ({
+          ...p,
+          esNuevo: false 
+      }));
+      
+      setCarrito(productosTransformados);
+      setGuiaOrigenId(transferencia.guia_salida_id); 
+      setNuevaEntrada(prev => ({...prev, solicitante: `TRANSFERENCIA DESDE ${transferencia.sede_origen}`}));
+      setMensaje({ tipo: 'success', texto: `✅ Productos de la Guía ${transferencia.serie}-${transferencia.numero} cargados correctamente. Presione "Guardar Entrada" para finalizar.` });
+  };
+
   const agregarProducto = (prod) => {
     if (prod.tipo_bien === 'SERVICIO') {
         setMensaje({ tipo: 'warning', texto: 'Los servicios no se agregan por Guía de Entrada.' });
         return;
     }
-
     const existe = carrito.find(p => p.id === prod.id);
     if (existe) {
         setMensaje({ tipo: 'warning', texto: 'El producto ya está en lista.' });
@@ -199,9 +251,6 @@ function GestionEntradas({ usuario }) {
     return carrito.reduce((acc, item) => acc + (item.cantidad * (item.precio_venta || 0)), 0).toFixed(2);
   };
 
-  /* ===========================
-     CARGA MASIVA EXCEL (MODO DIFERIDO - SOLO MEMORIA)
-     =========================== */
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -216,9 +265,7 @@ function GestionEntradas({ usuario }) {
         const data = XLSX.utils.sheet_to_json(ws);
 
         let itemsParaCarrito = [];
-        let existentes = 0;
-        let nuevos = 0;
-        let serviciosOmitidos = 0;
+        let existentes = 0; let nuevos = 0; let serviciosOmitidos = 0;
 
         data.forEach((row, index) => {
             const codigoExcel = String(row.CODIGO || row.codigo || '').trim().toUpperCase();
@@ -226,7 +273,7 @@ function GestionEntradas({ usuario }) {
             
             const nuevoProd = {
                 id: `TEMP-${index}-${Date.now()}`, 
-                esNuevo: true,                     
+                esNuevo: true, 
                 codigo: codigoExcel,
                 codigo_p: String(row.CODIGO_P || row.codigo_p || '').trim().toUpperCase(),
                 descripcion: String(row.DESCRIPCION || row.descripcion || 'SIN DESCRIPCION').toUpperCase(),
@@ -243,7 +290,6 @@ function GestionEntradas({ usuario }) {
 
             if (codigoExcel) {
                 const productoExistente = productosCatalogo.find(p => p.codigo === codigoExcel);
-
                 if (productoExistente) {
                     if (productoExistente.tipo_bien === 'SERVICIO') {
                         serviciosOmitidos++;
@@ -275,7 +321,6 @@ function GestionEntradas({ usuario }) {
         }
 
       } catch (error) {
-        console.error("Error Excel", error);
         setMensaje({ tipo: 'error', texto: 'Error al leer el archivo.' });
       }
       if(fileInputRef.current) fileInputRef.current.value = "";
@@ -283,14 +328,10 @@ function GestionEntradas({ usuario }) {
     reader.readAsBinaryString(file);
   };
 
-  /* ===========================
-     CREACION MANUAL RAPIDA
-     =========================== */
   const abrirModalCrear = () => {
       setNuevoProductoRapido({
-          codigo: busquedaProd.toUpperCase(),
-          codigo_p: '', 
-          descripcion: '', categoria: 'MONTURA', marca: '', modelo: '', color: '', material: '', precio_venta: ''
+          codigo: busquedaProd.toUpperCase(), codigo_p: '', descripcion: '', categoria: 'MONTURA', 
+          marca: '', modelo: '', color: '', material: '', precio_venta: ''
       });
       setMensajeProducto(null);
       setOpenModalProducto(true);
@@ -303,14 +344,11 @@ function GestionEntradas({ usuario }) {
       }
       try {
           const res = await axios.post('http://localhost:5000/api/productos', {
-              ...nuevoProductoRapido,
-              tipo_bien: 'PRODUCTO'
+              ...nuevoProductoRapido, tipo_bien: 'PRODUCTO'
           });
           const prodCreado = res.data;
-          
           setProductosCatalogo(prev => [...prev, prodCreado]);
           agregarProducto(prodCreado);
-          
           setOpenModalProducto(false);
           setMensaje({ tipo: 'success', texto: 'Producto creado y agregado.' });
       } catch (err) {
@@ -318,9 +356,6 @@ function GestionEntradas({ usuario }) {
       }
   };
 
-  /* ===========================
-     GUARDAR ENTRADA FINAL
-     =========================== */
   const handleSubmit = async () => {
     if (!nuevaEntrada.sede_id || !nuevaEntrada.solicitante || carrito.length === 0) {
         setMensaje({ tipo: 'error', texto: 'Faltan datos o productos.' });
@@ -334,29 +369,16 @@ function GestionEntradas({ usuario }) {
             if (item.esNuevo) {
                 try {
                     const resProd = await axios.post('http://localhost:5000/api/productos', {
-                        codigo: item.codigo,
-                        codigo_p: item.codigo_p,
-                        descripcion: item.descripcion,
-                        categoria: item.categoria,
-                        marca: item.marca,
-                        modelo: item.modelo,
-                        color: item.color,
-                        material: item.material,
-                        precio_venta: item.precio_venta,
+                        codigo: item.codigo, codigo_p: item.codigo_p, descripcion: item.descripcion,
+                        categoria: item.categoria, marca: item.marca, modelo: item.modelo,
+                        color: item.color, material: item.material, precio_venta: item.precio_venta,
                         tipo_bien: 'PRODUCTO'
                     });
                     
                     const productoCreado = resProd.data;
-                    
-                    productosFinales.push({
-                        ...productoCreado,
-                        cantidad: item.cantidad
-                    });
-
+                    productosFinales.push({ ...productoCreado, cantidad: item.cantidad });
                     setProductosCatalogo(prev => [...prev, productoCreado]);
-
                 } catch (err) {
-                    console.error(`Error creando ${item.codigo} al guardar:`, err);
                     setMensaje({ tipo: 'error', texto: `Error crítico al crear producto ${item.codigo}. Detenido.` });
                     return; 
                 }
@@ -370,15 +392,18 @@ function GestionEntradas({ usuario }) {
             usuario_id: usuario.id,
             productos: productosFinales, 
             total_global: calcularTotalGlobal(),
-            nro_comprobante: `${nuevaEntrada.serie}-${nuevaEntrada.numero}`
+            nro_comprobante: `${nuevaEntrada.serie}-${nuevaEntrada.numero}`,
+            guia_salida_origen_id: guiaOrigenId 
         });
 
         setOpenModal(false);
+        setMensajeGeneral({ tipo: 'success', texto: 'Guía de entrada generada correctamente.' });
         cargarEntradas(); 
+        setTimeout(() => setMensajeGeneral(null), 4000);
         
     } catch (err) {
         console.error(err);
-        setMensaje({ tipo: 'error', texto: 'Error al procesar la entrada.' });
+        setMensaje({ tipo: 'error', texto: err.response?.data?.error || 'Error al procesar la entrada.' });
     }
   };
 
@@ -392,14 +417,14 @@ function GestionEntradas({ usuario }) {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" className="ge-title">Registro de Entradas</Typography>
         <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={handleOpen}
+            variant="contained" startIcon={<AddIcon />} onClick={handleOpen}
             sx={{ bgcolor: '#0ea5e9', fontWeight: 'bold' }}
         >
             Nueva Entrada
         </Button>
       </Box>
+
+      {mensajeGeneral && <Alert severity={mensajeGeneral.tipo} sx={{ mb: 3 }}>{mensajeGeneral.texto}</Alert>}
 
       <Paper className="ge-card" sx={{ p: 2, display: 'flex', gap: 2, mb: 3 }}>
         <FormControl size="small" sx={{ minWidth: 200 }} className="ge-input-glass">
@@ -416,7 +441,6 @@ function GestionEntradas({ usuario }) {
                 <MenuItem value="SALDO INICIAL">Saldo Inicial</MenuItem>
                 <MenuItem value="AJUSTE">Ajuste de Stock</MenuItem>
                 <MenuItem value="TRANSFERENCIA">Transferencia</MenuItem>
-                {/* OPCIÓN COMPRA ELIMINADA */}
             </Select>
         </FormControl>
       </Paper>
@@ -432,13 +456,23 @@ function GestionEntradas({ usuario }) {
                     <TableCell className="ge-table-header-cell">Solicitado Por</TableCell>
                     <TableCell className="ge-table-header-cell">Total (Ref.)</TableCell>
                     <TableCell className="ge-table-header-cell">Estado</TableCell>
+                    <TableCell className="ge-table-header-cell" align="center">Acciones</TableCell>
                 </TableRow>
             </TableHead>
             <TableBody>
                 {entradas.map((row) => (
-                    <TableRow key={row.id} className="ge-table-row">
+                    <TableRow 
+                        key={row.id} 
+                        className="ge-table-row" 
+                        sx={{ 
+                            opacity: row.estado === 'ANULADO' ? 0.6 : 1,
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)' }
+                        }}
+                        onClick={() => verDetalles(row)}
+                    >
                         <TableCell className="ge-table-cell">{new Date(row.fecha).toLocaleDateString()}</TableCell>
-                        <TableCell className="ge-table-cell" sx={{ fontWeight: 'bold' }}>{row.serie}-{row.numero}</TableCell>
+                        <TableCell className="ge-table-cell" sx={{ fontWeight: 'bold', textDecoration: row.estado === 'ANULADO' ? 'line-through' : 'none' }}>{row.serie}-{row.numero}</TableCell>
                         <TableCell className="ge-table-cell">{row.nombre_sede}</TableCell>
                         <TableCell className="ge-table-cell">
                             <Chip 
@@ -455,12 +489,32 @@ function GestionEntradas({ usuario }) {
                         <TableCell className="ge-table-cell">{row.solicitante}</TableCell>
                         <TableCell className="ge-table-cell" sx={{ fontWeight: 'bold' }}>S/ {row.total_monto}</TableCell>
                         <TableCell className="ge-table-cell">
-                            <Chip label={row.estado} size="small" sx={{ bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 'bold' }} />
+                            <Chip 
+                                label={row.estado || 'COMPLETADO'} size="small" 
+                                sx={{ 
+                                    fontWeight: 'bold', 
+                                    bgcolor: row.estado === 'ANULADO' ? '#f1f5f9' : '#dcfce7', 
+                                    color: row.estado === 'ANULADO' ? '#64748b' : '#16a34a' 
+                                }} 
+                            />
+                        </TableCell>
+                        <TableCell className="ge-table-cell" align="center">
+                            {row.estado !== 'ANULADO' ? (
+                                <IconButton 
+                                    size="small" 
+                                    sx={{ color: '#ef4444' }} 
+                                    onClick={(e) => { e.stopPropagation(); confirmarAnulacion(row); }}
+                                >
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            ) : (
+                                <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 'bold' }}>---</span>
+                            )}
                         </TableCell>
                     </TableRow>
                 ))}
                 {entradas.length === 0 && (
-                    <TableRow><TableCell colSpan={7} align="center" className="ge-table-cell">No hay registros.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} align="center" className="ge-table-cell">No hay registros.</TableCell></TableRow>
                 )}
             </TableBody>
         </Table>
@@ -498,7 +552,6 @@ function GestionEntradas({ usuario }) {
                                 <MenuItem value="AJUSTE">Ajuste de Stock</MenuItem>
                                 <MenuItem value="SALDO INICIAL">Saldo Inicial</MenuItem>
                                 <MenuItem value="TRANSFERENCIA">Transferencia</MenuItem>
-                                {/* OPCIÓN COMPRA ELIMINADA */}
                             </Select>
                         </FormControl>
                     </Grid>
@@ -506,7 +559,7 @@ function GestionEntradas({ usuario }) {
                         <TextField className="ge-modal-input" label="Nro Comprobante" value={`${nuevaEntrada.serie} - ${nuevaEntrada.numero}`} disabled fullWidth size="small" />
                     </Grid>
                     <Grid item xs={12} md={4}>
-                        <TextField className="ge-modal-input" label="Solicitado Por *" value={nuevaEntrada.solicitante} onChange={(e) => setNuevaEntrada({...nuevaEntrada, solicitante: e.target.value.toUpperCase()})} fullWidth size="small" />
+                        <TextField className="ge-modal-input" label="Solicitado Por *" value={nuevaEntrada.solicitante} disabled={nuevaEntrada.tipo_entrada === 'TRANSFERENCIA'} onChange={(e) => setNuevaEntrada({...nuevaEntrada, solicitante: e.target.value.toUpperCase()})} fullWidth size="small" />
                     </Grid>
                     <Grid item xs={12}>
                         <TextField className="ge-modal-input" label="Encargado" value={usuario.nombre} disabled fullWidth size="small" />
@@ -517,7 +570,6 @@ function GestionEntradas({ usuario }) {
             <Divider sx={{ my: 3, borderColor: '#e2e8f0' }}>
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     <Chip label="DETALLE DE PRODUCTOS" sx={{ bgcolor: '#f1f5f9', color: '#1e293b', fontWeight: 'bold' }} />
-                    
                     {(nuevaEntrada.tipo_entrada === 'SALDO INICIAL' || nuevaEntrada.tipo_entrada === 'AJUSTE') && (
                         <>
                             <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} />
@@ -528,13 +580,33 @@ function GestionEntradas({ usuario }) {
             </Divider>
 
             {nuevaEntrada.tipo_entrada === 'TRANSFERENCIA' ? (
-                // AQUI ASEGURAMOS EL COLOR BLANCO (#ffffff)
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, flexDirection: 'column', alignItems: 'center', color: '#ffffff' }}>
-                    <LocalShippingIcon sx={{ fontSize: 60, mb: 2, color: '#ffffff' }} />
-                    <Typography variant="h6">Gestión de Recepciones</Typography>
-                    <Typography variant="body2">
-                        El sistema verificará automáticamente si existen envíos pendientes desde otras sedes.
-                    </Typography>
+                <Box sx={{ display: 'flex', py: 2, flexDirection: 'column', color: '#ffffff' }}>
+                    {transferenciasPendientes.length > 0 ? (
+                        <Grid container spacing={2}>
+                            {transferenciasPendientes.map(trans => (
+                                <Grid item xs={12} sm={6} key={trans.guia_salida_id}>
+                                    <Paper sx={{ p: 2, bgcolor: guiaOrigenId === trans.guia_salida_id ? '#dcfce7' : '#f8fafc', color: '#1e293b', border: guiaOrigenId === trans.guia_salida_id ? '2px solid #16a34a' : '1px solid #cbd5e1' }}>
+                                        <Typography variant="subtitle2" fontWeight="bold">Desde: {trans.sede_origen}</Typography>
+                                        <Typography variant="caption" display="block">Doc: {trans.serie}-{trans.numero}</Typography>
+                                        <Typography variant="caption" display="block">Fecha: {new Date(trans.fecha).toLocaleDateString()}</Typography>
+                                        <Button 
+                                            size="small" variant="contained" fullWidth sx={{ mt: 1, bgcolor: '#0ea5e9' }}
+                                            onClick={() => cargarProductosDeTransferencia(trans)}
+                                            disabled={guiaOrigenId === trans.guia_salida_id}
+                                        >
+                                            {guiaOrigenId === trans.guia_salida_id ? 'Cargado al Carrito' : 'Cargar Productos'}
+                                        </Button>
+                                    </Paper>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    ) : (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                            <CheckCircleIcon sx={{ fontSize: 50, color: '#4ade80', mb: 1 }} />
+                            <Typography variant="h6">Todo al día</Typography>
+                            <Typography variant="body2">No tienes transferencias pendientes de recibir.</Typography>
+                        </Box>
+                    )}
                 </Box>
             ) : (
                 <Box sx={{ position: 'relative', mb: 2 }}>
@@ -545,7 +617,6 @@ function GestionEntradas({ usuario }) {
                         onChange={(e) => setBusquedaProd(e.target.value.toUpperCase())}
                         InputProps={{ startAdornment: <SearchIcon sx={{ color: '#475569', mr: 1 }} /> }}
                     />
-                    
                     {busquedaProd && (
                         <Paper className="ge-product-list">
                             {productosFiltrados.length > 0 ? (
@@ -583,16 +654,28 @@ function GestionEntradas({ usuario }) {
                                 <TableCell sx={{ color: '#1e293b' }}>{item.codigo} {item.esNuevo && <Chip label="NUEVO" size="small" color="primary" sx={{height:20, fontSize:'0.6rem'}}/>}</TableCell>
                                 <TableCell sx={{ color: '#1e293b' }}>{item.descripcion}</TableCell>
                                 <TableCell align="center">
-                                    <TextField type="number" size="small" variant="standard" value={item.cantidad} onChange={(e) => cambiarCantidad(item.id, e.target.value)} className="ge-qty-input" InputProps={{ style: { color: '#1e293b', fontWeight: 'bold' } }} />
+                                    <TextField 
+                                        type="number" size="small" variant="standard" 
+                                        value={item.cantidad} 
+                                        disabled={nuevaEntrada.tipo_entrada === 'TRANSFERENCIA'}
+                                        onChange={(e) => cambiarCantidad(item.id, e.target.value)} 
+                                        className="ge-qty-input" InputProps={{ style: { color: '#1e293b', fontWeight: 'bold' } }} 
+                                    />
                                 </TableCell>
                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: '#059669' }}>S/ {(item.cantidad * (item.precio_venta || 0)).toFixed(2)}</TableCell>
                                 <TableCell align="center">
-                                    <IconButton size="small" sx={{ color: '#ef4444' }} onClick={() => eliminarDelCarrito(item.id)}><DeleteIcon fontSize="small" /></IconButton>
+                                    <IconButton 
+                                        size="small" sx={{ color: '#ef4444' }} 
+                                        disabled={nuevaEntrada.tipo_entrada === 'TRANSFERENCIA'}
+                                        onClick={() => eliminarDelCarrito(item.id)}
+                                    >
+                                        <DeleteIcon fontSize="small" />
+                                    </IconButton>
                                 </TableCell>
                             </TableRow>
                         ))}
                         {carrito.length === 0 && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: '#64748b' }}>
-                            {nuevaEntrada.tipo_entrada === 'TRANSFERENCIA' ? 'No hay productos transferidos por recibir.' : 'Agregue productos'}
+                            {nuevaEntrada.tipo_entrada === 'TRANSFERENCIA' ? 'Seleccione una transferencia arriba.' : 'Agregue productos'}
                         </TableCell></TableRow>}
                     </TableBody>
                 </Table>
@@ -609,7 +692,6 @@ function GestionEntradas({ usuario }) {
         </DialogActions>
       </Dialog>
 
-      {/* MODAL SECUNDARIO: CREAR PRODUCTO RÁPIDO */}
       <Dialog open={openModalProducto} onClose={() => setOpenModalProducto(false)} maxWidth="sm" fullWidth PaperProps={{ className: 'ge-modal-paper' }}>
           <DialogTitle className="ge-modal-title" sx={{ bgcolor: '#1e293b' }}>Registrar Nueva Montura</DialogTitle>
           <DialogContent>
@@ -623,19 +705,15 @@ function GestionEntradas({ usuario }) {
                         <TextField className="ge-modal-input" label="Cód. Proveedor" fullWidth value={nuevoProductoRapido.codigo_p} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, codigo_p: e.target.value.toUpperCase()})} />
                       </Grid>
                   </Grid>
-                  
                   <TextField className="ge-modal-input" label="Descripción" fullWidth value={nuevoProductoRapido.descripcion} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, descripcion: e.target.value.toUpperCase()})} />
-                  
                   <Grid container spacing={2}>
                       <Grid item xs={6}><TextField className="ge-modal-input" label="Marca" fullWidth value={nuevoProductoRapido.marca} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, marca: e.target.value.toUpperCase()})} /></Grid>
                       <Grid item xs={6}><TextField className="ge-modal-input" label="Modelo" fullWidth value={nuevoProductoRapido.modelo} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, modelo: e.target.value.toUpperCase()})} /></Grid>
                   </Grid>
-                  
                   <Grid container spacing={2}>
                       <Grid item xs={6}><TextField className="ge-modal-input" label="Color" fullWidth value={nuevoProductoRapido.color} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, color: e.target.value.toUpperCase()})} /></Grid>
                       <Grid item xs={6}><TextField className="ge-modal-input" label="Material" fullWidth value={nuevoProductoRapido.material} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, material: e.target.value.toUpperCase()})} /></Grid>
                   </Grid>
-
                   <TextField className="ge-modal-input" label="Precio Venta" type="number" fullWidth value={nuevoProductoRapido.precio_venta} onChange={(e) => setNuevoProductoRapido({...nuevoProductoRapido, precio_venta: e.target.value})} />
               </Box>
           </DialogContent>
@@ -651,6 +729,97 @@ function GestionEntradas({ usuario }) {
         <DialogActions sx={{ p: 2 }}>
             <Button onClick={() => setOpenConfirmClose(false)} sx={{ color: '#64748b' }}>Continuar Editando</Button>
             <Button onClick={confirmarCierre} variant="contained" color="error">Salir y Descartar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openConfirmAnular} onClose={() => setOpenConfirmAnular(false)} PaperProps={{ className: 'ge-alert-paper' }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#ef4444' }}><WarningAmberIcon /> Confirmar Anulación</DialogTitle>
+        <DialogContent>
+            <DialogContentText sx={{ color: '#475569' }}>
+                ¿Está seguro que desea anular la guía <b>{guiaAAnular?.serie}-{guiaAAnular?.numero}</b>?
+                <br/><br/>
+                El stock ingresado será descontado de esta sede. {guiaAAnular?.tipo_entrada === 'TRANSFERENCIA' && 'La transferencia original volverá a estar PENDIENTE.'} Esta acción no se puede deshacer.
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setOpenConfirmAnular(false)} sx={{ color: '#64748b' }}>Cancelar</Button>
+            <Button onClick={ejecutarAnulacion} variant="contained" color="error">Sí, Anular Guía</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openModalDetalles} onClose={() => setOpenModalDetalles(false)} maxWidth="md" fullWidth PaperProps={{ className: 'ge-modal-paper' }}>
+        <DialogTitle className="ge-modal-title" sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: '#0f172a' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <InfoIcon /> Detalles de Guía {guiaSeleccionada?.serie}-{guiaSeleccionada?.numero}
+            </Box>
+            <IconButton onClick={() => setOpenModalDetalles(false)} sx={{ color: 'white' }}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, bgcolor: '#f8fafc' }}>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>Sede</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>{guiaSeleccionada?.nombre_sede}</Typography>
+                </Grid>
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>Concepto</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>{guiaSeleccionada?.tipo_entrada}</Typography>
+                </Grid>
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>Fecha</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>{guiaSeleccionada ? new Date(guiaSeleccionada.fecha).toLocaleDateString() : ''}</Typography>
+                </Grid>
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>Solicitado Por</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>{guiaSeleccionada?.solicitante}</Typography>
+                </Grid>
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>Encargado</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>{guiaSeleccionada?.nombre_encargado}</Typography>
+                </Grid>
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>Estado</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: guiaSeleccionada?.estado === 'ANULADO' ? '#ef4444' : '#16a34a' }}>{guiaSeleccionada?.estado || 'COMPLETADO'}</Typography>
+                </Grid>
+            </Grid>
+
+            <Divider sx={{ mb: 2 }}>
+                <Chip label="PRODUCTOS INGRESADOS" size="small" sx={{ fontWeight: 'bold', bgcolor: '#e2e8f0', color: '#475569' }} />
+            </Divider>
+
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0' }}>
+                <Table size="small">
+                    <TableHead sx={{ bgcolor: '#f1f5f9' }}>
+                        <TableRow>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1e293b' }}>Código</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1e293b' }}>Descripción</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1e293b' }}>Marca</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1e293b' }}>Cantidad</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1e293b' }}>Subtotal</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {detallesGuia.map((item, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell sx={{ color: '#334155' }}>{item.codigo}</TableCell>
+                                <TableCell sx={{ color: '#334155' }}>{item.descripcion}</TableCell>
+                                <TableCell sx={{ color: '#334155' }}>{item.marca || '-'}</TableCell>
+                                <TableCell align="center" sx={{ color: '#334155', fontWeight: 'bold' }}>{item.cantidad}</TableCell>
+                                <TableCell align="right" sx={{ color: '#334155' }}>S/ {item.total_linea}</TableCell>
+                            </TableRow>
+                        ))}
+                        {detallesGuia.length === 0 && (
+                            <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: '#64748b' }}>No hay detalles para mostrar.</TableCell></TableRow>
+                        )}
+                        <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                            <TableCell colSpan={4} align="right" sx={{ fontWeight: 'bold', color: '#0f172a' }}>TOTAL GENERAL:</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#059669' }}>S/ {guiaSeleccionada?.total_monto}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <Button onClick={() => setOpenModalDetalles(false)} variant="contained" sx={{ bgcolor: '#64748b', '&:hover': { bgcolor: '#475569' } }}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>

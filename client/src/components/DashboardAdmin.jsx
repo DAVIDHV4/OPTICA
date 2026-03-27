@@ -26,7 +26,8 @@ import GestionUsuarios from './admin/GestionUsuarios';
 import GestionProductos from './admin/GestionProductos';
 import GestionInventarios from './admin/GestionInventarios';
 import GestionEntradas from './admin/GestionEntradas'; 
-import GestionSalidas from './admin/GestionSalidas'; // IMPORTACIÓN NUEVA
+import GestionSalidas from './admin/GestionSalidas';
+import GestionSedes from './admin/GestionSedes';
 
 function DashboardAdmin({ usuario, cerrarSesion }) {
   const [vistaActual, setVistaActual] = useState('Resumen');
@@ -233,11 +234,7 @@ function DashboardAdmin({ usuario, cerrarSesion }) {
 
             {vistaActual === 'Productos' && <GestionProductos />}
             
-            {vistaActual === 'Sedes' && (
-              <Paper className="dashboard-card">
-                <Typography variant="h6">Sedes</Typography>
-              </Paper>
-            )}
+            {vistaActual === 'Sedes' && <GestionSedes />}
             
             {vistaActual === 'Entradas' && <GestionEntradas usuario={usuario} />}
 
